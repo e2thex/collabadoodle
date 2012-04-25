@@ -1,82 +1,95 @@
-
 Raphael.el.addPart = function (point) {
   var pathParts = this.attr('path') || [];
   pathParts.push(point);
   this.attr('path', pathParts);
-};
+}
 
+function NULLAction(canvas) {
+  action = {};
+  action.canvas = canvas;
+  action.start = function(e) { };
+  action.continue = function(e) {};
+  action.end = function(e) {};
+  action.draw = function(attr) {};
+  return action;
+}
+
+function PathAction(canvas) {
+  action = {};
+  action.longest_path = 10
+  action.canvas = canvas;
+  action.path;
+  action.start = function(e) {
+    e.preventDefault();
+    var draw = action.canvas.paper.path();
+    draw.attr(action.canvas.current_settings); 
+    draw.addPart(['M', e.pageX , e.pageY]);
+    action.path = draw;
+  };
+  action.continue = function(e) {
+    e.preventDefault();
+    draw = action.path;
+    draw.addPart(['L', e.pageX , e.pageY]); 
+    action.canvas.elements.push(draw);
+    //lets start a new path so we do not get two long of a path
+    if (draw.attr('path').length> action.longest_path) {
+      this.start(e);
+    }
+  };
+  action.end = function(e) {
+    e.preventDefault();
+    action.canvas.elements.push(action.path);
+    action.canvas.call.comunicate();
+  };
+  action.draw = function(attr) {
+    path_parts = attr.path;
+    delete attr.path;
+    path = action.canvas.paper.path();
+    path.attr(attr);
+    for (i in path_parts) {
+      path.addPart(path_parts[i]);
+    }
+    return path;
+  }
+  return action;
+
+}
 function Canvas(id, div_id) {
   var canvas = {}
   canvas.paper = Raphael("canvas", 1000, 800);
-  canvas.paths = [];
+  canvas.elements = [];
   canvas.calls = [];
   canvas.path_drawing = 0;
-  canvas.longest_path = 10;
+  canvas.actions = {
+    'path' : PathAction,
+  };
+  canvas.defaultAction = 'path';
+  canvas.currentAction = 'path';
+  canvas.activeAction = NULLAction(canvas);
   canvas.current_settings = {
     'stroke': '#555555'
   
   }
-  canvas.path = {}
-  canvas.path.start = function(e) {
-    e.preventDefault();
-    canvas.path_drawing = 1;
-    var draw = canvas.paper.path();
-    draw.attr(canvas.current_settings); 
-    draw.addPart(['M', e.pageX , e.pageY]);
-    canvas.paths.push(draw);
-  };
-  canvas.path.drawPart = function(e) {
-    e.preventDefault();
-    if(canvas.path_drawing == 1) {
-      var draw = canvas.paths.pop()
-      draw.addPart(['L', e.pageX , e.pageY]); 
-      canvas.paths.push(draw);
-      //lets start a new path so we do not get two long of a path
-      if (draw.attr('path').length> canvas.longest_path) {
-        this.start(e);
-      }
-    }
-  };
-  canvas.path.end = function(e) {
-    e.preventDefault();
-    canvas.path_drawing = 0;
-    canvas.call.comunicate();
-  };
+  canvas.path = {};
   canvas.path.get = function(attr) {
-    path = canvas.paths.filter(function(p) {
+    path = canvas.elements.filter(function(p) {
       return p.id.toString() == attr.id.toString();
     });
-  /*
-    path = canvas.paths.filter(function(p) {
-      n2s = function(key,value) {
-        if(typeof(value) == 'number') {
-          return value.toString();
-        }
-        return value;
-      }
-      return JSON.stringify(p.attrs,n2s) == JSON.stringify(attr,n2s);
-    });
-    */
     return path.length>0 ? path[0] : false;
   };
-  canvas.pathsAttrs = function () {
-    return canvas.paths.map(function (row) {
+  canvas.redraw = function(attr) {
+    if (!canvas.path.get(attr)) {
+      item = canvas.actions[attr.type](canvas).draw(attr);
+      canvas.elements.push(item);
+    }
+  }
+  canvas.elementsAttrs = function () {
+    return canvas.elements.map(function (row) {
       row.attrs.id = row.id;
+      row.attrs.type = row.type;
       return row.attrs;
     });
   };
-  canvas.path.draw = function(attr) {
-    if (!canvas.path.get(attr)) {
-      path_parts = attr.path;
-      delete attr.path;
-      path = canvas.paper.path();
-      path.attr(attr);
-      for (i in path_parts) {
-        path.addPart(path_parts[i]);
-      }
-      canvas.paths.push(path);
-    }
-  }
   canvas.call = {}
   canvas.call.end = function(id) {
     index = canvas.calls.indexOf(id);
@@ -96,9 +109,8 @@ function Canvas(id, div_id) {
     if(is_new) {
       data.new = true;
     }
-    data.data = canvas.pathsAttrs();
+    data.data = canvas.elementsAttrs();
     data.id = canvas.call.start();
-    
     $.ajax({
       url: window.location, 
       dataType: 'json',
@@ -106,7 +118,7 @@ function Canvas(id, div_id) {
       type: 'POST',
       success:function(data, textStatus, jqXHR) {
         $.each(data.data, function () {
-          canvas.path.draw(this);
+          canvas.redraw(this);
         });
         canvas.call.end(data.id);
         if(canvas.calls.length <1) {
@@ -124,9 +136,15 @@ function getRandomInt(min, max) {
 }  
 $(document).bind('pageinit', function() {
   var canvas = Canvas();
-  $('#canvas').bind('vmousedown',function (e) {canvas.path.start(e);})
-    .bind('vmousemove', function (e) {canvas.path.drawPart(e)})
-    .bind('vmouseup', function (e) {canvas.path.end(e)});
+  $('#canvas').bind('vmousedown',function (e) { 
+    canvas.activeAction = canvas.actions.path(canvas)
+    canvas.activeAction.start(e);
+  })
+    .bind('vmousemove', function (e) {canvas.activeAction.continue(e)})
+    .bind('vmouseup', function (e) {
+      canvas.activeAction.end(e);
+      canvas.activeAction = NULLAction(canvas);
+  });
   $('#b').click(function (e) {canvas.call.comunicate(true)});
     canvas.call.comunicate(true);
 

@@ -67,6 +67,8 @@ main();
 <script src = 'http://code.jquery.com/jquery-1.7.2.min.js'></script>
 <script src="http://code.jquery.com/mobile/1.1.0/jquery.mobile-1.1.0.min.js"></script>
 <script src = './vnote.js'></script>
+<link rel="stylesheet" media="screen" type="text/css" href="css/colorpicker.css" />
+<script type="text/javascript" src="js/colorpicker.js"></script>
 <body style="">
 <div id="canvas"></div>
 <style>

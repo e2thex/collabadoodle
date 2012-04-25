@@ -1,0 +1,44 @@
+
+  <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <link rel="stylesheet" href="http://code.jquery.com/qunit/git/qunit.css" type="text/css" media="screen" />
+    <script type="text/javascript" src="http://code.jquery.com/qunit/git/qunit.js"></script>
+
+<script src = './raphael.js'></script>
+<script src = './vnote.js'></script>
+<script>
+$(document).ready(function(){
+      
+test("NULLAction", function() {
+  var action = NULLAction();
+  ok( action.start , "Has start method" );
+  ok( action.continue , "Has continue method" );
+  ok( action.draw , "Has draw method" );
+  ok( action.end , "Has end method" );
+});
+
+test("PathAction", function() {
+  var canvas = {};
+  var e = $("<div></div>");
+  canvas.paper = Raphael(e, 1000, 800);
+  canvas.called = 0;
+  canvas.call = function () { canvas.called ++};
+  canvas.elements = [];
+
+  var action = PathAction(canvas);
+  ok( action.start , "Has start method" );
+  ok( action.continue , "Has continue method" );
+  ok( action.draw , "Has draw method" );
+  ok( action.end , "Has end method" );
+});
+});
+</script>
+<body>
+  <h1 id="qunit-header">QUnit test for Collabadoodle</h1>
+   <h2 id="qunit-banner"></h2>
+    <div id="qunit-testrunner-toolbar"></div>
+     <h2 id="qunit-userAgent"></h2>
+      <ol id="qunit-tests"></ol>
+       <div id="qunit-fixture">test markup, will be hidden</div>
+       </body>
+
+
